@@ -1,0 +1,8 @@
+discord.py
+vaderSentiment
+aiosqlite
+python-dotenv
+yt-dlp
+PyNaCl
+vaderSentiment
+google-genai
