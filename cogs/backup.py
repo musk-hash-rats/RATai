@@ -27,11 +27,38 @@ class Backup(commands.Cog):
     async def backup_load(self, interaction: discord.Interaction, file_url: str):
         await interaction.response.defer(ephemeral=True)
         
+        # Handle Discord Message Links (e.g. https://discord.com/channels/...)
+        # This fixes the "0auth" or invalid link issue users face when copying the wrong link
+        if "discord.com/channels/" in file_url:
+            try:
+                # Extract IDs from url: .../channels/guild_id/channel_id/message_id
+                parts = file_url.split('/')
+                channel_id = int(parts[-2])
+                message_id = int(parts[-1])
+                
+                channel = self.bot.get_channel(channel_id)
+                if not channel:
+                     # Try fetching if not in cache (rare for recent, but possible)
+                     try:
+                        channel = await self.bot.fetch_channel(channel_id)
+                     except:
+                        return await interaction.followup.send("❌ Could not find that channel. Ensure the bot has access.")
+
+                message = await channel.fetch_message(message_id)
+                if not message.attachments:
+                    return await interaction.followup.send("❌ That message has no files attached!")
+                
+                # Update URL to the actual file URL
+                file_url = message.attachments[0].url
+                
+            except Exception as e:
+                return await interaction.followup.send(f"❌ Failed to read message link: {e}")
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(file_url) as resp:
                     if resp.status != 200:
-                        return await interaction.followup.send("❌ Failed to download file. Check the URL.")
+                        return await interaction.followup.send("❌ Failed to download file. Check the URL (403/404).")
                     
                     content = await resp.text()
                     data = json.loads(content)
