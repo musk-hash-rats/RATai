@@ -2,7 +2,7 @@ import discord
 import os
 import asyncio
 from discord.ext import commands
-# from dotenv import load_dotenv # Removed
+from aiohttp import web
 from utils.database import init_db
 from utils.env_loader import load_env_manual
 
@@ -20,6 +20,21 @@ if not discord.opus.is_loaded():
     except Exception as e:
         print(f"⚠️ Failed to manually load Opus: {e}")
 
+# Cloud Run Health Check Server
+async def health_check(request):
+    return web.Response(text="RATai is alive", status=200)
+
+async def start_dummy_server():
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    # Cloud Run injects PORT (default 8080)
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"🌐 Cloud Run Web Server running on port {port}")
+
 class RATaiBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
@@ -31,6 +46,9 @@ class RATaiBot(commands.Bot):
         super().__init__(command_prefix='!', intents=intents)
 
     async def setup_hook(self):
+        # Start the dummy server for Cloud Run
+        await start_dummy_server()
+        
         await init_db()
         print("Database initialized.")
         
