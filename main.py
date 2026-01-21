@@ -25,15 +25,18 @@ async def health_check(request):
     return web.Response(text="RATai is alive", status=200)
 
 async def start_dummy_server():
-    app = web.Application()
-    app.router.add_get('/', health_check)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    # Cloud Run injects PORT (default 8080)
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    print(f"🌐 Cloud Run Web Server running on port {port}")
+    try:
+        app = web.Application()
+        app.router.add_get('/', health_check)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        # Cloud Run injects PORT (default 8080)
+        port = int(os.environ.get("PORT", 8080))
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
+        print(f"🌐 Cloud Run Web Server running on port {port}")
+    except Exception as e:
+        print(f"⚠️ Web Server failed to start (Ignored for local dev): {e}")
 
 class RATaiBot(commands.Bot):
     def __init__(self):
