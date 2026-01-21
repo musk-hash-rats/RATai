@@ -46,9 +46,7 @@ class RATaiBot(commands.Bot):
         super().__init__(command_prefix='!', intents=intents)
 
     async def setup_hook(self):
-        # Start the dummy server for Cloud Run
-        await start_dummy_server()
-        
+        # Database init
         await init_db()
         print("Database initialized.")
         
@@ -75,9 +73,28 @@ class RATaiBot(commands.Bot):
 
 bot = RATaiBot()
 
-if __name__ == '__main__':
+async def main():
+    # 1. Start Cloud Run Health Check Server (Critical for deployment)
+    await start_dummy_server()
+    
+    # 2. Check Token
     if not TOKEN:
-        print("Error: DISCORD_TOKEN not found in .env")
-    else:
-        print(f"DEBUG: Attempting login with token starting with: {TOKEN[:5]}... (Length: {len(TOKEN)})")
-        bot.run(TOKEN)
+        print("❌ Error: DISCORD_TOKEN not found in .env or Environment Variables!")
+        # Keep web server running so Cloud Run doesn't kill us immediately, allowing logs to be read
+        while True:
+            await asyncio.sleep(3600)
+    
+    print(f"DEBUG: Attempting login with token starting with: {TOKEN[:5]}...")
+    
+    # 3. Start Bot
+    async with bot:
+        await bot.start(TOKEN)
+
+if __name__ == '__main__':
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # Handle simple Ctrl+C locally
+        pass
+    except Exception as e:
+        print(f"❌ Fatal Error: {e}")
